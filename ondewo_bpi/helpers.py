@@ -52,7 +52,8 @@ def _add_params_to_cai_context(
     try:
         request = context_pb2.GetContextRequest(name=f"{session}/contexts/{context}")
         existing_context = client.services.contexts.get_context(request)
-        existing_context.parameters.MergeFrom(parameters)
+        for k, v in parameters.items():
+            existing_context.parameters[k].CopyFrom(v)
         client.services.contexts.update_context(
             request=context_pb2.UpdateContextRequest(
                 context=existing_context
