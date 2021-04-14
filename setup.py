@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="ondewo-bpi",
-    version="2.0.2",
+    version="2.0.3",
     author="Ondewo GbmH",
     author_email="info@ondewo.com",
     description="This library starts a proxy for the cai server allowing for fulfillment hooks.",
