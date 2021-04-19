@@ -2,6 +2,14 @@
 
 # Ondewo Bpi
 
+If you have a grpc config with at least the following:
+```
+{
+  "grpc_cert": "<GRPC-CERT-HERE>"
+}
+```
+locally with the name 'config.json', you should be able to run the docker-compose files after building the image. Look in the makefile.
+
 ## The BPI (Business Process Integration) Module
 
 This module sits between the user and CAI:
