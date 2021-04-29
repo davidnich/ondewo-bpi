@@ -22,6 +22,14 @@ from ondewo_bpi.config import CAI_PORT
 from ondewo_bpi.example.login_mock import MockUserLoginServer, PortChecker
 from ondewo_bpi.message_handler import MessageHandler
 
+from onewo.logging.logger import import_config, initiate_loggers
+
+config = import_config()
+conf["logging"]["formatters"]["fluent_debug"]["format"][
+    "project_id"
+] = project_id
+_, _, _, logger_console = initiate_loggers(config)
+
 
 class MyServer(BpiServer):
     """
