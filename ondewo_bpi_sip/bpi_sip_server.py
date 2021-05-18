@@ -33,10 +33,13 @@ def get_flask_url_from_session_id(session: str) -> str:
 
 
 def get_sip_host_name_port_from_session_id(session: str) -> Tuple[str, Optional[str], str]:
-    identifying_info = session.split("XXX")[1].split("-")
-    if "None" in identifying_info[1]:
-        return identifying_info[0], None, identifying_info[2]
-    return identifying_info[0], identifying_info[1], identifying_info[2]
+    try:
+        identifying_info = session.split("XXX")[1].split("-")
+        if "None" in identifying_info[1]:
+            return identifying_info[0], None, identifying_info[2]
+        return identifying_info[0], identifying_info[1], identifying_info[2]
+    except ValueError:
+        return None, None, None
 
 
 class SipServer(BpiServer):
