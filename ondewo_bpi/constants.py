@@ -20,7 +20,7 @@ TIME_FORMAT: str = r"%H:%M:%S"
 
 class SipTriggers(Enum):
     SIP_HANGUP: str = "<SIP:HANGUP>"
-    SIP_HUMAN_HANDOVER: str = "<SIP:HUMAN_HANDOVER>"
+    SIP_HUMAN_HANDOVER: str = "<SIP:HUMAN_HANDOVER=(.*?)>"
     SIP_SEND_NOW: str = "<SIP:SEND_NOW=(.*?)>"
     SIP_PAUSE: str = "<SIP:PAUSE=(.*?)>"
 
