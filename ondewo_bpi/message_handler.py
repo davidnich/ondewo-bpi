@@ -176,7 +176,8 @@ class ParameterMethods:
         parameters = create_parameter_dict(params)
         for j, i in enumerate(response.query_result.output_contexts):
             if i.name == context_name:
-                response.query_result.output_contexts[j].parameters.MergeFrom(parameters)
+                for k, v in parameters.items():
+                    i.parameters[k].CopyFrom(v)
         return response
 
     @staticmethod

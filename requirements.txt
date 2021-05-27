@@ -3,5 +3,5 @@ grpcio
 grpcio_reflection
 protobuf==3.13.0
 python-dotenv
-ondewo-logging==2.0.0
-git+https://github.com/ondewo/ondewo-nlu-client-python@develop#egg=ondewo-nlu-client-python
+ondewo-logging>=2.0.0
+ondewo-nlu-client>=1.1.2
