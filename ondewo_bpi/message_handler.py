@@ -20,7 +20,7 @@ from google.protobuf.json_format import MessageToJson
 from ondewo.nlu import context_pb2, intent_pb2, session_pb2
 from ondewo.logging.logger import logger_console
 
-from ondewo_bpi.constants import DATE_FORMAT, QueryTriggers, SipTriggers
+from ondewo_bpi.constants import DATE_FORMAT, DATE_FORMAT_BACK, EnglishDays, GermanDays, QueryTriggers, SipTriggers
 
 
 def create_parameter_dict(my_dict: Dict) -> Optional[Dict[str, context_pb2.Context.Parameter]]:
@@ -87,6 +87,24 @@ class MessageHandler:
             if not len(message.text.text):
                 continue
             SingleMessageHandler.reformat_date_in_message(message)
+        return response
+
+    @staticmethod
+    def strip_seconds(response: session_pb2.DetectIntentResponse,) -> session_pb2.DetectIntentResponse:
+        logger_console.info("strip seconds from text in response")
+        for message in response.query_result.fulfillment_messages:
+            if not len(message.text.text):
+                continue
+            SingleMessageHandler.strip_seconds_in_message(message)
+        return response
+
+    @staticmethod
+    def add_weekday(response: session_pb2.DetectIntentResponse, days: Union[EnglishDays, GermanDays] = GermanDays) -> session_pb2.DetectIntentResponse:
+        logger_console.info("add weekday to date in response")
+        for message in response.query_result.fulfillment_messages:
+            if not len(message.text.text):
+                continue
+            SingleMessageHandler.add_weekday_in_message(message, days)
         return response
 
     @staticmethod
@@ -287,4 +305,84 @@ class SingleMessageHandler:
                 )
                 message.text.text[0] = new_response
                 logger_console.info(f"DATE: {date} formatted to DATE: {date.strftime(DATE_FORMAT)}")
+        return message
+
+    @staticmethod
+    def strip_seconds_in_message(message: intent_pb2.Intent.Message) -> intent_pb2.Intent.Message:
+        if message.HasField("text"):
+            message = SingleMessageHandler._strip_seconds_text(message)
+        if message.HasField("card"):
+            message = SingleMessageHandler._strip_seconds_card(message)
+        return message
+
+    @staticmethod
+    def _strip_seconds_card(message: intent_pb2.Intent.Message) -> intent_pb2.Intent.Message:
+        match: Union[bool, re.Match] = True  # type: ignore
+        while match:
+            match = re.match(r"(.*)(\d\d:\d\d:\d\d)(.*)", message.card.subtitle)  # type: ignore
+            if match:
+                time = match.groups()[1]
+                new_response = "".join(
+                    [match.groups()[0], time[:-3], match.groups()[2]]  # type: ignore
+                )
+                message.card.subtitle = new_response
+                logger_console.info(f"DATE: {time} formatted to DATE: {time[:-2]}")
+        return message
+
+    @staticmethod
+    def _strip_seconds_text(message: intent_pb2.Intent.Message) -> intent_pb2.Intent.Message:
+        match: Union[bool, re.Match] = True  # type: ignore
+        while match:
+            match = re.match(r"(.*)(\d\d:\d\d:\d\d)(.*)", message.text.text[0])  # type: ignore
+            if match:
+                time = match.groups()[1]
+                new_response = "".join(
+                    [match.groups()[0], time[:-3], match.groups()[2]]  # type: ignore
+                )
+                message.text.text[0] = new_response
+                logger_console.info(f"DATE: {time} formatted to DATE: {time[:-2]}")
+        return message
+
+    @staticmethod
+    def add_weekday_in_message(message: intent_pb2.Intent.Message, days: Union[EnglishDays, GermanDays]) -> intent_pb2.Intent.Message:
+        if message.HasField("text"):
+            message = SingleMessageHandler._add_weekday_text(message, days)
+        if message.HasField("card"):
+            message = SingleMessageHandler._add_weekday_card(message, days)
+        return message
+
+    @staticmethod
+    def _add_weekday_card(message: intent_pb2.Intent.Message, days: Union[EnglishDays, GermanDays]) -> intent_pb2.Intent.Message:
+        date_regex = r"\d\d.\d\d.\d\d\d\d"
+        matches = len(re.findall(date_regex, message.card.subtitle))
+        if matches > 1:
+            print("Multiple date subtitutions on one line! Not supported. Will only substitute the first")
+        match = re.match(rf"(.*)({date_regex})(.*)", message.card.subtitle)  # type: ignore
+        if match:
+            time = match.groups()[1]
+            day_of_the_week_index = int(datetime.datetime.strptime(time, DATE_FORMAT_BACK).strftime("%w"))
+            day = list(iter(days))[day_of_the_week_index].value
+            new_response = "".join(
+                [match.groups()[0], day, time, match.groups()[2]]  # type: ignore
+            )
+            message.card.subtitle = new_response
+            logger_console.info(f"DATE: {time} formatted to DATE: {time[:-2]}")
+        return message
+
+    @staticmethod
+    def _add_weekday_text(message: intent_pb2.Intent.Message, days: Union[EnglishDays, GermanDays]) -> intent_pb2.Intent.Message:
+        date_regex = r"\d\d.\d\d.\d\d\d\d"
+        matches = len(re.findall(date_regex, message.text.text[0]))
+        if matches > 1:
+            print("Multiple date subtitutions on one line! Not supported. Will only substitute the first")
+        match = re.match(fr"(.*)({date_regex})(.*)", message.text.text[0])  # type: ignore
+        if match:
+            time = match.groups()[1]
+            day_of_the_week_index = int(datetime.datetime.strptime(time, DATE_FORMAT_BACK).strftime("%w"))
+            day = list(iter(days))[day_of_the_week_index].value
+            new_response = "".join(
+                [match.groups()[0], day, time, match.groups()[2]]  # type: ignore
+            )
+            message.text.text[0] = new_response
+            logger_console.info(f"DATE: {time} formatted to DATE: {time[:-2]}")
         return message
