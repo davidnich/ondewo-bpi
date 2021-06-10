@@ -354,7 +354,7 @@ class SingleMessageHandler:
 
     @staticmethod
     def _add_weekday_card(message: intent_pb2.Intent.Message, days: Union[EnglishDays, GermanDays]) -> intent_pb2.Intent.Message:
-        date_regex = r"\d\d.\d\d.\d\d\d\d"
+        date_regex = r"\d\d\D\d\d\D\d\d\d\d"
         matches = len(re.findall(date_regex, message.card.subtitle))
         if matches > 1:
             print("Multiple date subtitutions on one line! Not supported. Will only substitute the first")
@@ -372,7 +372,7 @@ class SingleMessageHandler:
 
     @staticmethod
     def _add_weekday_text(message: intent_pb2.Intent.Message, days: Union[EnglishDays, GermanDays]) -> intent_pb2.Intent.Message:
-        date_regex = r"\d\d.\d\d.\d\d\d\d"
+        date_regex = r"\d\d\D\d\d\D\d\d\d\d"
         matches = len(re.findall(date_regex, message.text.text[0]))
         if matches > 1:
             print("Multiple date subtitutions on one line! Not supported. Will only substitute the first")
