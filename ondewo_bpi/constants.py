@@ -15,6 +15,7 @@
 from enum import Enum
 
 DATE_FORMAT: str = r"%d.%m.%4Y"
+DATE_FORMAT_BACK: str = r"%d.%m.%Y"
 TIME_FORMAT: str = r"%H:%M:%S"
 
 
@@ -27,3 +28,23 @@ class SipTriggers(Enum):
 
 class QueryTriggers(Enum):
     REPLACEMENT_TRIGGER: str = r"<(\w*-\w*\.\w*)>"
+
+
+class GermanDays(Enum):
+    sun: str = 'Sontag der '
+    mon: str = 'Montag der '
+    tue: str = 'Dienstag der '
+    wed: str = 'Mittwoch der '
+    thur: str = 'Donnerstag der '
+    fri: str = 'Freitag der '
+    sat: str = 'Samstag der '
+
+
+class EnglishDays(Enum):
+    sun: str = 'Sunday the '
+    mon: str = 'Monday the '
+    tue: str = 'Tuesday the '
+    wed: str = 'Wednesday the '
+    thur: str = 'Thursday the '
+    fri: str = 'Friday the '
+    sat: str = 'Saturday the '

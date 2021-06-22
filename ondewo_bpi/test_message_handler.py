@@ -21,7 +21,7 @@ from ondewo.nlu import intent_pb2, session_pb2
 
 import ondewo_bpi.config as file_anchor  # noqa: F401
 from ondewo_bpi.bpi_server import BpiServer
-from ondewo_bpi.constants import DATE_FORMAT, QueryTriggers, SipTriggers
+from ondewo_bpi.constants import DATE_FORMAT, QueryTriggers, SipTriggers, EnglishDays, GermanDays
 from ondewo_bpi.message_handler import MessageHandler, SingleMessageHandler
 
 REPLACEMENT_STRING = "replacement string"
@@ -225,4 +225,80 @@ def test_trigger_functions_replacement(original_message, processed_message):
     response = create_text_response(original_message)
     message_handler = TestMessageHandler()
     response = message_handler.process_messages(response)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == processed_message
+
+
+@pytest.mark.parametrize(
+    "original_message,processed_message",  # type: ignore
+    [
+        ("2012-12-12T00:00:00", "12.12.2012"),
+        ("hello 2012-12-12T00:00:00 hello", "hello 12.12.2012 hello"),
+        ("there 2012-12-12T00:00:00 there", "there 12.12.2012 there"),
+    ],
+)
+def test_reformat_date(original_message, processed_message):
+    response = create_text_response(original_message)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == original_message
+    MessageHandler.reformat_date(response)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == processed_message
+
+
+@pytest.mark.parametrize(
+    "original_message,processed_message",  # type: ignore
+    [
+        ("12.12.2012T00:00:00", "12.12.2012T00:00"),
+        ("hello 12.12.2012T00:00:00 hello", "hello 12.12.2012T00:00 hello"),
+        ("hello 00:00:00 hello", "hello 00:00 hello"),
+        ("hello 16:20:00 hello", "hello 16:20 hello"),
+    ],
+)
+def test_strip_seconds(original_message, processed_message):
+    response = create_text_response(original_message)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == original_message
+    MessageHandler.strip_seconds(response)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == processed_message
+
+
+@pytest.mark.parametrize(
+    "original_message,processed_message",  # type: ignore
+    [
+        ("12.12.2012", "Wednesday the 12.12.2012"),
+        ("11.12.2012", "Tuesday the 11.12.2012"),
+        ("13.12.2012T16:00:00", "Thursday the 13.12.2012T16:00:00"),
+    ],
+)
+def test_adding_days_english(original_message, processed_message):
+    response = create_text_response(original_message)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == original_message
+    MessageHandler.add_weekday(response, EnglishDays)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == processed_message
+
+
+@pytest.mark.parametrize(
+    "original_message,processed_message",  # type: ignore
+    [
+        ("12.12.2012", "Mittwoch der 12.12.2012"),
+        ("11.12.2012", "Dienstag der 11.12.2012"),
+        ("13.12.2012T16:00:00", "Donnerstag der 13.12.2012T16:00:00"),
+    ],
+)
+def test_adding_days_german(original_message, processed_message):
+    response = create_text_response(original_message)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == original_message
+    MessageHandler.add_weekday(response, GermanDays)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == processed_message
+
+
+@pytest.mark.parametrize(
+    "original_message,processed_message",  # type: ignore
+    [
+        ("12.12.2012", "Mittwoch der 12.12.2012"),
+        ("11.12.2012", "Dienstag der 11.12.2012"),
+        ("13.12.2012T16:00:00", "Donnerstag der 13.12.2012T16:00:00"),
+    ],
+)
+def test_adding_days_default(original_message, processed_message):
+    response = create_text_response(original_message)
+    assert response.query_result.fulfillment_messages[0].text.text[0] == original_message
+    MessageHandler.add_weekday(response)
     assert response.query_result.fulfillment_messages[0].text.text[0] == processed_message
