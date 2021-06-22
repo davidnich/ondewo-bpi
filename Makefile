@@ -1,5 +1,7 @@
 CODE_CHECK_IMAGE=code_check_image
 TEST_IMAGE=test_image
+DOCKER_REGISTRY=registry-dev.ondewo.com:5000
+ONDEWO_NAMESPACE=ondewo
 
 run_code_checks: ## Start the code checks image and run the checks
 	docker build -t ${CODE_CHECK_IMAGE} -f dockerfiles/code_checks.Dockerfile .
@@ -15,12 +17,12 @@ install:
 	pip install -r requirements.txt
 
 build_example:
-	docker build -t registry-dev.ondewo.com:5000/bpi-example-image:$(image_suffix) -f dockerfiles/Dockerfile .
+	docker build -t ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-example-image:$(image_suffix) -f dockerfiles/Dockerfile .
 
 push_example:
-	docker push registry-dev.ondewo.com:5000/bpi-example-image:$(image_suffix)
-	docker tag registry-dev.ondewo.com:5000/bpi-example-image:$(image_suffix) registry-dev.ondewo.com:5000/bpi-example-image:latest
-	docker push registry-dev.ondewo.com:5000/bpi-example-image:latest
+	docker push ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-example-image:$(image_suffix)
+	docker tag ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-example-image:$(image_suffix) ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-example-image:latest
+	docker push ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-example-image:latest
 
 build_qa_example: export image_suffix=master
 build_qa_example: export image=qa
@@ -30,12 +32,12 @@ build_sip_example: export image=sip
 build_sip_example: build_image_with_tag
 
 build_image_with_tag:
-	docker build -t registry-dev.ondewo.com:5000/bpi-$(image)-example-image:$(image_suffix) -f dockerfiles/$(image).Dockerfile .
+	docker build -t ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-$(image)-example-image:$(image_suffix) -f dockerfiles/$(image).Dockerfile .
 
 push_image_with_tag:
-	docker push registry-dev.ondewo.com:5000/bpi-$(image)-example-image:$(image_suffix)
-	docker tag registry-dev.ondewo.com:5000/bpi-$(image)-example-image:$(image_suffix) registry-dev.ondewo.com:5000/bpi-$(image)-example-image:latest
-	docker push registry-dev.ondewo.com:5000/bpi-$(image)-example-image:latest
+	docker push ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-$(image)-example-image:$(image_suffix)
+	docker tag ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-$(image)-example-image:$(image_suffix) ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-$(image)-example-image:latest
+	docker push ${DOCKER_REGISTRY}/${ONDEWO_NAMESPACE}/bpi-$(image)-example-image:latest
 
 run_qa_example:
 	docker-compose up bpi_qa
