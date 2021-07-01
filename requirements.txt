@@ -4,4 +4,4 @@ grpcio_reflection
 protobuf==3.13.0
 python-dotenv
 ondewo-logging>=2.0.0
-ondewo-nlu-client>=1.1.2
+ondewo-nlu-client==2.0.*
