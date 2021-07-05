@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Dict
+import regex as re
+from typing import List, Tuple, Dict, Optional
 
 from autocode.base_coder import ClassCoder, FunctionCoder
 from autocode.client_type import ClientType
@@ -103,15 +104,15 @@ class GRPCAutoCoder:
             if line == "\n":
                 continue
             elif (
-                line[:tab_length_in_spaces] != "    "
-                or "def" in line[:tab_length_in_spaces]
-                or "class" in line[:tab_length_in_spaces]
+                    line[:tab_length_in_spaces] != "    "
+                    or "def" in line[:tab_length_in_spaces]
+                    or "class" in line[:tab_length_in_spaces]
             ):
                 class_end_idx = i - 1
                 break
 
         # generate list with relevant base code, and a copy for code auto-generation
-        class_lines = lines[class_start_idx:class_end_idx+1]
+        class_lines = lines[class_start_idx:class_end_idx + 1]
         return class_lines
 
     def get_class_info_from_lines(self, lines: List[str]) -> Tuple[str, str, List[str]]:
@@ -187,7 +188,7 @@ class GRPCAutoCoder:
 
         return functions_info
 
-    def get_function_info_from_proto(self, proto_file: str) -> Dict[str, Tuple[str, str]]:
+    def get_function_info_from_proto(self, proto_file: str) -> Dict[str, Tuple[str, str, Optional[str], Optional[str]]]:
         """
         get endpoint information from proto file
         extracts lines with 'rpc' and reads the endpoint name + request and response messages
@@ -198,7 +199,7 @@ class GRPCAutoCoder:
         # get rpc definition lines with request/response message information
         rpc_lines = []
         for line in lines:
-            if "rpc" in line and "google/rpc" not in line and "google.rpc" not in line:
+            if re.findall("^\s*rpc", line):
                 rpc_lines.append(line)
 
         # parse request/response messages for rpc endpoint from rpc definition lines
@@ -207,15 +208,21 @@ class GRPCAutoCoder:
         endpoint_info = {}
         for line in rpc_lines:
             endpoint = line.split("rpc ")[1].split(" (")[0]
-            request = line.split(f"{endpoint} (")[1].split(") returns")[0].replace("stream ", "")
-            response = line.split("returns (")[1].split(")")[0].replace("stream ", "")
+            request = line.split(f"{endpoint} (")[1].split(") returns")[0]
+            request_type = "stream" if "stream" in request else None
+            request = request.replace("stream ", "")
+
+            response = line.split("returns (")[1].split(")")[0]
+            response_type = "stream" if "stream" in response else None
+            response = response.replace("stream ", "")
+
             if "protobuf.Empty" in request:
                 request = "Empty"
             if "protobuf.Empty" in response:
                 response = "Empty"
             if "Operation" in response:
                 response = "Operation"
-            endpoint_info[endpoint] = (request, response)
+            endpoint_info[endpoint] = (request, response, request_type, response_type)
 
         return endpoint_info
 
@@ -272,25 +279,25 @@ class GRPCAutoCoder:
         return new_function_name
 
     def build_functions_coder_objects(
-        self,
-        indent_lvl: int,
-        function_info: Dict[str, Tuple[List[str], List[str]]],
-        pb2_filename: str,
-        endpoint_info: Dict[str, Tuple[str, str]],
-        client_info: Dict[str, Tuple[str, str]],
-        client_service_name: str,
+            self,
+            indent_lvl: int,
+            function_info: Dict[str, Tuple[List[str], List[str]]],
+            pb2_filename: str,
+            endpoint_info: Dict[str, Tuple[str, str, Optional[str], Optional[str]]],
+            client_info: Dict[str, Tuple[str, str]],
+            client_service_name: str,
     ) -> Tuple[List[FunctionCoder], List[bool]]:
         functions = []
 
-        include_google_import, include_empty_import, include_operation_import = (False, False, False)
-        for function_name, (request, response) in endpoint_info.items():
+        include_google_import, include_empty_import, include_operation_import, include_typing_import = (False, False, False, False)
+        for function_name, (request, response, request_type, response_type ) in endpoint_info.items():
 
             # try to find corresponding client function by request/response types
             client_function_name = "[NOT_FOUND]"
             for some_client_function_name, (search_request, search_response) in client_info.items():
                 if (request, response) == (
-                    search_request.replace(pb2_filename + ".", ""),
-                    search_response.replace(pb2_filename + ".", ""),
+                        search_request.replace(pb2_filename + ".", ""),
+                        search_response.replace(pb2_filename + ".", ""),
                 ):
                     client_function_name = some_client_function_name
                     break
@@ -332,7 +339,8 @@ class GRPCAutoCoder:
                     else:
                         type_dict[arg] = f"{pb2_filename}.{request}"
                 if arg == "request_iterator":
-                    type_dict[arg] = f"{pb2_filename}.{request}"
+                    request = re.findall("\[(.*)\]",request)
+                    type_dict[arg] = (f"Iterator[{pb2_filename}.{request[0]}]")
                     request_str = "request_iterator"
                 if arg == "context":
                     type_dict[arg] = "grpc.ServicerContext"
@@ -349,7 +357,13 @@ class GRPCAutoCoder:
                         include_operation_import = True
                     returns = {"response": f"{response}"}
                 else:
-                    returns = {"response": f"{pb2_filename}.{response}"}
+                    if "Iterator" in response:
+                        include_typing_import = True
+                        response = re.findall("\[(.*)\]", response)
+                        response = f"Iterator[{pb2_filename}.{response[0]}]"
+                        returns = {"response": response}
+                    else:
+                        returns = {"response": f"{pb2_filename}.{response}"}
             else:
                 returns = {}
 
@@ -357,7 +371,7 @@ class GRPCAutoCoder:
             if set_fct_input_empty:
                 fc_input = ""
             else:
-                fc_input = f"request={request_str}"
+                fc_input = f"{request_str}={request_str}"
             docstring = ["[AUTO-GENERATED FUNCTION]"] + docstring
 
             # create Function object, which can generate the python code and append it to a list
@@ -373,7 +387,7 @@ class GRPCAutoCoder:
                 docstring=docstring,
             )
             functions.append(f)
-        bools = [include_google_import, include_empty_import, include_operation_import]
+        bools = [include_google_import, include_empty_import, include_operation_import, include_typing_import]
         return functions, bools
 
     @staticmethod
@@ -413,6 +427,7 @@ class GRPCAutoCoder:
     ) -> None:
 
         # parse information from files
+        print(f'Generating code for proto file: {proto_file}')
         lines = self.read_file_lines(in_file=in_file)
         class_lines = self.find_class_in_python_file(lines=lines)
         class_info = self.get_class_info_from_lines(lines=class_lines)
@@ -428,9 +443,9 @@ class GRPCAutoCoder:
 
         # get endpoint function code
         base_indent = 0
-        functions, (include_google_import, include_empty_import, include_operation_import) = \
+        functions, (include_google_import, include_empty_import, include_operation_import, include_typing_import) = \
             self.build_functions_coder_objects(
-                indent_lvl=base_indent+1,
+                indent_lvl=base_indent + 1,
                 function_info=function_info,
                 pb2_filename=pb2_filename,
                 endpoint_info=endpoint_info,
@@ -440,44 +455,47 @@ class GRPCAutoCoder:
 
         # create header
         header = (
-            "# Copyright 2021 ONDEWO GmbH\n" +
-            "#\n" +
-            "# Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
-            "# you may not use this file except in compliance with the License.\n" +
-            "# You may obtain a copy of the License at\n" +
-            "#\n" +
-            "#     http://www.apache.org/licenses/LICENSE-2.0\n" +
-            "#\n" +
-            "# Unless required by applicable law or agreed to in writing, software\n" +
-            "# distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
-            "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
-            "# See the License for the specific language governing permissions and\n" +
-            "# limitations under the License.\n" +
-            "#\n" +
-            "# [AUTO-GENERATED FILE]\n\n"
+                "# Copyright 2021 ONDEWO GmbH\n" +
+                "#\n" +
+                "# Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
+                "# you may not use this file except in compliance with the License.\n" +
+                "# You may obtain a copy of the License at\n" +
+                "#\n" +
+                "#     http://www.apache.org/licenses/LICENSE-2.0\n" +
+                "#\n" +
+                "# Unless required by applicable law or agreed to in writing, software\n" +
+                "# distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
+                "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
+                "# See the License for the specific language governing permissions and\n" +
+                "# limitations under the License.\n" +
+                "#\n" +
+                "# [AUTO-GENERATED FILE]\n\n"
         )
 
         # create imports
-        google_import, empty_import, operation_import = ("", "", "")
+        google_import, empty_import, operation_import, typing_import = ("", "", "","")
         if include_google_import:
             google_import = "import google\n"
+        if include_typing_import:
+            typing_import = "from typing import Iterator\n\n"
         if include_empty_import:
             empty_import = "from google.protobuf.empty_pb2 import Empty\n"
         if include_operation_import:
             operation_import = "from google.longrunning.operations_grpc_pb2 import Operation\n"
         imports = (
-            "from abc import ABCMeta, abstractmethod\n"
-            + "\n"
-            + f"{google_import}"
-            + "import grpc\n"
-            + f"{operation_import}"
-            + f"{empty_import}"
-            + f"from {import_path} import {pb2_filename}\n"
-            + f"from {import_path}.client import Client\n"
-            + f"from {import_path}.{grpc_filename} import {class_info[0]}\n"
-            + "from ondewo.logging.logger import logger\n"
-            + "\n"
-            + "\n"
+                "from abc import ABCMeta, abstractmethod\n"
+                + "\n"
+                + f"{typing_import}"
+                + f"{google_import}"
+                + "import grpc\n"
+                + f"{operation_import}"
+                + f"{empty_import}"
+                + f"from {import_path} import {pb2_filename}\n"
+                + f"from {import_path}.client import Client\n"
+                + f"from {import_path}.{grpc_filename} import {class_info[0]}\n"
+                + "from ondewo.logging.logger import logger\n"
+                + "\n"
+                + "\n"
         )
 
         # create class docstring
