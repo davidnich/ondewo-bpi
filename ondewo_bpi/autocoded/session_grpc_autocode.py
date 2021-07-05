@@ -16,6 +16,8 @@
 
 from abc import ABCMeta, abstractmethod
 
+from typing import Iterator
+
 import grpc
 from google.protobuf.empty_pb2 import Empty
 from ondewo.nlu import session_pb2
@@ -57,14 +59,14 @@ class AutoSessionsServicer(SessionsServicer):
         response = self.client.services.sessions.detect_intent(request=request)
         return response
 
-    def StreamingDetectIntent(self, request_iterator: session_pb2.StreamingDetectIntentRequest, context: grpc.ServicerContext) -> session_pb2.StreamingDetectIntentResponse:
+    def StreamingDetectIntent(self, request_iterator: Iterator[session_pb2.StreamingDetectIntentRequest], context: grpc.ServicerContext) -> Iterator[session_pb2.StreamingDetectIntentResponse]:
         """
         [AUTO-GENERATED FUNCTION]
         Processes a natural language query in audio format in a streaming fashion
 
         """
         logger.info("relaying StreamingDetectIntent() to nlu-client...")
-        response = self.client.services.sessions.streaming_detect_intent(request=request_iterator)
+        response = self.client.services.sessions.streaming_detect_intent(request_iterator=request_iterator)
         return response
 
     def ListSessions(self, request: session_pb2.ListSessionsRequest, context: grpc.ServicerContext) -> session_pb2.ListSessionsResponse:

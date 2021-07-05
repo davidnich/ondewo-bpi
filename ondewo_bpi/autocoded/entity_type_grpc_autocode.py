@@ -121,7 +121,7 @@ class AutoEntityTypesServicer(EntityTypesServicer):
     def BatchCreateEntities(self, request: entity_type_pb2.BatchCreateEntitiesRequest, context: grpc.ServicerContext) -> Operation:
         """
         [AUTO-GENERATED FUNCTION]
-        Creates multiple new entities in the specified entity type (extends the
+        Creates an entity value in an entity type.
 
         """
         logger.info("relaying BatchCreateEntities() to nlu-client...")
@@ -131,7 +131,7 @@ class AutoEntityTypesServicer(EntityTypesServicer):
     def BatchUpdateEntities(self, request: entity_type_pb2.BatchUpdateEntitiesRequest, context: grpc.ServicerContext) -> Operation:
         """
         [AUTO-GENERATED FUNCTION]
-        Updates entities in the specified entity type (replaces the existing
+        Updates a specific entity value.
 
         """
         logger.info("relaying BatchUpdateEntities() to nlu-client...")
@@ -141,7 +141,7 @@ class AutoEntityTypesServicer(EntityTypesServicer):
     def BatchDeleteEntities(self, request: entity_type_pb2.BatchDeleteEntitiesRequest, context: grpc.ServicerContext) -> Operation:
         """
         [AUTO-GENERATED FUNCTION]
-        Deletes entities in the specified entity type.
+        Deletes the specified entity value.
 
         """
         logger.info("relaying BatchDeleteEntities() to nlu-client...")

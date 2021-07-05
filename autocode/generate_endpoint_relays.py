@@ -15,6 +15,8 @@
 from autocode.client_type import ClientType
 from autocode.grpc_auto_coder import GRPCAutoCoder
 
+# TODO: Make it dynamic so it reads from the file system
+
 files_to_generate = [
     {
         "in_file": "./ondewo-nlu-client-python/ondewo/nlu/user_pb2_grpc.py",
@@ -81,12 +83,15 @@ files_to_generate = [
     },
 ]
 
-for file_dic in files_to_generate:
-    coder = GRPCAutoCoder(
-        in_file=file_dic["in_file"],
-        out_file=file_dic["out_file"],
-        proto_file=file_dic["proto_file"],
-        client_file=file_dic["client_file"],
-        client_type=file_dic["client_type"],
-    )
-    coder.generate_code()
+
+if __name__ == "__main__":
+
+    for file_dic in files_to_generate:
+        coder = GRPCAutoCoder(
+            in_file=file_dic["in_file"],
+            out_file=file_dic["out_file"],
+            proto_file=file_dic["proto_file"],
+            client_file=file_dic["client_file"],
+            client_type=file_dic["client_type"],
+        )
+        coder.generate_code()
