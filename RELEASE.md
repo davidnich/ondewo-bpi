@@ -1,6 +1,13 @@
 # Release History
 *****************
+## Release ONDEWO BPI v2.0.4
+### New Features
+* Support NLU API 2.0.x
 
+### Improvements
+* Support streaming connections
+
+*****************
 ## Release ONDEWO BPI v2.0.3
 ### New Features
 
