@@ -14,7 +14,7 @@
 
 import time
 from concurrent import futures
-from typing import List
+from typing import List, Optional
 
 import grpc
 from grpc_reflection.v1alpha import reflection
@@ -43,7 +43,7 @@ from ondewo.logging.logger import logger, logger_console
 from ondewo_bpi.bpi_services import BpiSessionsServices, BpiUsersServices, BpiContextServices, \
     BpiAgentsServices, BpiEntityTypeServices, BpiAiServicesServices, BpiIntentsServices, \
     BpiProjectRolesServices
-from ondewo_bpi.config import PORT, CentralClientProvider
+from ondewo_bpi.config import CentralClientProvider
 
 
 class BpiServer(
@@ -64,9 +64,12 @@ class BpiServer(
     def client(self, value: NLUClient) -> None:
         self._client = value
 
-    def __init__(self) -> None:
+    def __init__(self, client: Optional[CentralClientProvider]) -> None:
         super().__init__()
-        self.client = CentralClientProvider().get_client()
+        if not client:
+            self.client = CentralClientProvider().get_client()
+        else:
+            self.client = client
         self.server = None
         self.services_descriptors: List[str] = [
             agent_pb2.DESCRIPTOR.services_by_name["Agents"].full_name,  # type: ignore
@@ -98,14 +101,16 @@ class BpiServer(
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         self._add_services()
         self._setup_reflection()
-        self.server.add_insecure_port(f"[::]:{PORT}")  # type: ignore
-        logger.info(f"SERVING SERVER AT SERVING PORT {PORT}")
+        port = self.client.get_port()
+        self.server.add_insecure_port(f"[::]:{port}")  # type: ignore
+        logger.info(f"SERVING SERVER AT SERVING PORT {port}")
         self.server.start()  # type: ignore
 
     def serve(self) -> None:
-        logger_console.info(f"attempting to start server on port {PORT}")
+        port = self.client.get_port()
+        logger_console.info(f"attempting to start server on port {port}")
         self._setup_server()
-        logger_console.warning({"message": f"Server started on port {PORT}", "content": PORT})
+        logger_console.warning({"message": f"Server started on port {port}", "content": port})
         logger_console.warning(
             {
                 "message": f"using intent handlers dict {list(self.intent_handlers.keys())}",
