@@ -64,12 +64,12 @@ class BpiServer(
     def client(self, value: NLUClient) -> None:
         self._client = value
 
-    def __init__(self, client: Optional[CentralClientProvider]) -> None:
+    def __init__(self, client_provider: Optional[CentralClientProvider]) -> None:
         super().__init__()
-        if not client:
+        if not client_provider:
             self.client = CentralClientProvider().get_client()
         else:
-            self.client = client
+            self.client = client_provider.get_client()
         self.server = None
         self.services_descriptors: List[str] = [
             agent_pb2.DESCRIPTOR.services_by_name["Agents"].full_name,  # type: ignore
