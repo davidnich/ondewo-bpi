@@ -11,15 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import functools
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Callable, List, Optional
-
+from typing import Dict, Callable, List, Optional, Any
+import regex as re
 import grpc
 from ondewo.nlu import session_pb2, intent_pb2, user_pb2, context_pb2
 from ondewo.nlu.client import Client as NLUClient
 from ondewo.logging.decorators import Timer
 from ondewo.logging.logger import logger_console
+from ondewo.nlu.intent_pb2 import ListIntentsRequest, IntentView, Intent
 
 from ondewo_bpi.autocoded.agent_grpc_autocode import AutoAgentsServicer
 from ondewo_bpi.autocoded.aiservices_grpc_autocode import AutoAiServicesServicer
@@ -33,6 +34,7 @@ from ondewo_bpi.constants import SipTriggers, QueryTriggers
 from ondewo_bpi.message_handler import MessageHandler, SingleMessageHandler
 
 from ondewo_bpi.helpers import get_session_from_response
+from collections import OrderedDict
 
 
 class BpiSessionsServices(AutoSessionsServicer):
@@ -44,13 +46,18 @@ class BpiSessionsServices(AutoSessionsServicer):
         pass
 
     def __init__(self) -> None:
-        self.intent_handlers: Dict[str, Callable] = {}
+
+        self.intent_handlers: Dict[str,List[Callable]] = OrderedDict()
         self.trigger_handlers: Dict[str, Callable] = {
             i.value: self.trigger_function_not_implemented for i in [*SipTriggers, *QueryTriggers]
         }
 
-    def register_intent_handler(self, intent_name: str, handler: Callable) -> None:
-        self.intent_handlers[intent_name] = handler
+    def register_intent_handler(self, intent_name: str, handlers: List[Callable]) -> None:
+        self.intent_handlers[intent_name] = handlers
+        # Make sure they are ordered by key length on insert
+        self.intent_handlers = self._create_ordered_dict_by_key_value_length(
+            dictionary=self.intent_handlers
+        )
 
     def register_trigger_handler(self, trigger: str, handler: Callable) -> None:
         self.trigger_handlers[trigger] = handler
@@ -138,20 +145,32 @@ class BpiSessionsServices(AutoSessionsServicer):
     def process_intent_handler(
             self, cai_response: session_pb2.DetectIntentResponse
     ) -> session_pb2.DetectIntentResponse:
+        # Create an ordered dictionary by key value length
         intent_name = cai_response.query_result.intent.display_name
-        handler: Optional[Callable] = self.intent_handlers.get(intent_name)
-        if handler is not None:
-            cai_response = handler(cai_response)
-            text = [i.text.text for i in cai_response.query_result.fulfillment_messages]
-            logger_console.warning(
-                {
-                    "message": f"BPI-DetectIntentResponse from BPI with text: {text}",
-                    "content": text,
-                    "text": text,
-                    "tags": ["text", "clean"],
-                }
-            )
+        handlers: Optional[List[Callable]] = self._get_handlers_for_intent(intent_name, self.intent_handlers)
+        if handlers is not None:
+            for handler in handlers:
+                cai_response = handler(cai_response)
+                text = [i.text.text for i in cai_response.query_result.fulfillment_messages]
+                logger_console.warning(
+                    {
+                        "message": f"BPI-DetectIntentResponse from BPI with text: {text}",
+                        "content": text,
+                        "text": text,
+                        "tags": ["text", "clean"],
+                    }
+                )
         return cai_response
+
+    def _create_ordered_dict_by_key_value_length(self, dictionary: Dict) -> Dict:
+        return OrderedDict(sorted(dictionary.items(), key=lambda x: len(x[0]), reverse=True))
+
+    @functools.lru_cache(maxsize=20)
+    def _get_handlers_for_intent(self, intent_name, sorted_dict: Dict[str,Any]) -> Optional[List[Callable]]:
+        for key in sorted_dict.keys():
+            if re.match(key, intent_name):
+                return sorted_dict.get(key)
+        return None
 
 
 class BpiUsersServices(AutoUsersServicer):
