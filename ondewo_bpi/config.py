@@ -86,7 +86,7 @@ class CentralClientProvider:
             )
             client = Client(config=config)
         else:
-            logger.info("configuring INself.secure connection")
+            logger.info("configuring INSECURE connection")
             config = ClientConfig(
                 host=self.cai_host,
                 port=cai_port,
