@@ -43,7 +43,7 @@ from ondewo.logging.logger import logger, logger_console
 from ondewo_bpi.bpi_services import BpiSessionsServices, BpiUsersServices, BpiContextServices, \
     BpiAgentsServices, BpiEntityTypeServices, BpiAiServicesServices, BpiIntentsServices, \
     BpiProjectRolesServices
-from ondewo_bpi.config import CentralClientProvider
+from ondewo_bpi.config import PORT, CentralClientProvider
 
 
 class BpiServer(
@@ -101,16 +101,14 @@ class BpiServer(
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         self._add_services()
         self._setup_reflection()
-        port = self.client.get_port()
-        self.server.add_insecure_port(f"[::]:{port}")  # type: ignore
-        logger.info(f"SERVING SERVER AT SERVING PORT {port}")
+        self.server.add_insecure_port(f"[::]:{PORT}")  # type: ignore
+        logger.info(f"SERVING SERVER AT SERVING PORT {PORT}")
         self.server.start()  # type: ignore
 
     def serve(self) -> None:
-        port = self.client.get_port()
-        logger_console.info(f"attempting to start server on port {port}")
+        logger_console.info(f"attempting to start server on port {PORT}")
         self._setup_server()
-        logger_console.warning({"message": f"Server started on port {port}", "content": port})
+        logger_console.warning({"message": f"Server started on port {PORT}", "content": PORT})
         logger_console.warning(
             {
                 "message": f"using intent handlers dict {list(self.intent_handlers.keys())}",

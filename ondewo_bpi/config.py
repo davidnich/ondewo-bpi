@@ -25,6 +25,20 @@ import ondewo_bpi.__init__ as file_anchor
 
 parent = os.path.abspath(os.path.join(os.path.dirname(file_anchor.__file__), os.path.pardir))
 
+# load default configuration from the environment
+load_dotenv("./bpi.env")
+
+PORT: str = os.getenv("PORT", "50051")
+CAI_HOST: Optional[str] = os.getenv("CAI_HOST")
+CAI_PORT: Optional[str] = os.getenv("CAI_PORT")
+CAI_TOKEN: Optional[str] = os.getenv("CAI_TOKEN")
+HTTP_AUTH_TOKEN: Optional[str] = os.getenv("HTTP_BASIC_AUTH")
+USER_NAME: Optional[str] = os.getenv("USER_NAME")
+USER_PASS: Optional[str] = os.getenv("USER_PASS")
+SECURE: Optional[str] = os.getenv("SECURE")
+
+config_path: str = os.getenv("CONFIG_PATH", "/home/ondewo/config.json")
+
 class CentralClientProvider:
     """
     provide a central nlu-client instance to the bpi server without building it on import
@@ -37,62 +51,46 @@ class CentralClientProvider:
         self._init_defaults()
 
     def _init_defaults(self) -> None:
-        load_dotenv("./bpi.env")
-
-        self.port: str = os.getenv("PORT", "50051")
-        self.cai_host: Optional[str] = os.getenv("self.cai_host")
-        self.cai_port: Optional[str] = os.getenv("self.cai_port")
-        self.cai_token: Optional[str] = os.getenv("CAI_TOKEN")
-        self.http_token: Optional[str] = os.getenv("HTTP_BASIC_AUTH")
-        self.user_name: Optional[str] = os.getenv("self.user_name")
-        self.user_pass: Optional[str] = os.getenv("self.user_pass")
-        self.secure: Optional[str] = os.getenv("self.secure")
-
-        self.config_path: str = os.getenv("CONFIG_PATH", "/home/ondewo/config.json")
-
         client_configuration_str = (
             "\nnlu-client configuration:\n"
-            + f"   Secure: {self.secure}\n"
-            + f"   Host: {self.cai_host}\n"
-            + f"   Port: {self.cai_port}\n"
-            + f"   Http_token: {self.http_token}\n"
-            + f"   User_name: {self.user_name}\n"
-            + f"   Password: {self.user_pass}\n"
+            + f"   Secure: {SECURE}\n"
+            + f"   Host: {CAI_HOST}\n"
+            + f"   Port: {CAI_PORT}\n"
+            + f"   Http_token: {HTTP_AUTH_TOKEN}\n"
+            + f"   User_name: {USER_NAME}\n"
+            + f"   Password: {USER_PASS}\n"
         )
         logger_console.info(client_configuration_str)
 
-    def get_port(self) -> int:
-        return self.port
-
     def instantiate_client(self, cai_port: str = "") -> Tuple[ClientConfig, Client]:
         if cai_port == "":
-            trial_port = self.cai_port
+            trial_port = CAI_PORT
             if trial_port == "" or not trial_port:
                 trial_port = "50055"
             cai_port = trial_port
 
-        if self.secure == "True":
+        if SECURE == "True":
             with open(config_path, "r") as fi:
                 json_dict: Dict = json.load(fi)
 
             logger.info("configuring secure connection")
             config: ClientConfig = ClientConfig(
-                host=self.cai_host,
+                host=CAI_HOST,
                 port=cai_port,
-                http_token=self.http_token,
-                user_name=self.user_name,
-                password=self.user_pass,
+                http_token=HTTP_AUTH_TOKEN,
+                user_name=USER_NAME,
+                password=USER_PASS,
                 grpc_cert=json_dict["grpc_cert"],
             )
             client = Client(config=config)
         else:
             logger.info("configuring INSECURE connection")
             config = ClientConfig(
-                host=self.cai_host,
+                host=CAI_HOST,
                 port=cai_port,
-                http_token=self.http_token,
-                user_name=self.user_name,
-                password=self.user_pass,
+                http_token=HTTP_AUTH_TOKEN,
+                user_name=USER_NAME,
+                password=USER_PASS,
             )
             client = Client(config=config, use_secure_channel=False)
         return config, client
