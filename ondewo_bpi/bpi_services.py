@@ -13,14 +13,15 @@
 # limitations under the License.
 import functools
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Callable, List, Optional, Any
-import regex as re
+from dataclasses import dataclass, field
+from typing import Dict, Callable, List, Optional
+
 import grpc
-from ondewo.nlu import session_pb2, intent_pb2, user_pb2, context_pb2
-from ondewo.nlu.client import Client as NLUClient
+import regex as re
 from ondewo.logging.decorators import Timer
 from ondewo.logging.logger import logger_console
-from ondewo.nlu.intent_pb2 import ListIntentsRequest, IntentView, Intent
+from ondewo.nlu import session_pb2, intent_pb2, user_pb2, context_pb2
+from ondewo.nlu.client import Client as NLUClient
 
 from ondewo_bpi.autocoded.agent_grpc_autocode import AutoAgentsServicer
 from ondewo_bpi.autocoded.aiservices_grpc_autocode import AutoAiServicesServicer
@@ -31,11 +32,25 @@ from ondewo_bpi.autocoded.project_role_grpc_autocode import AutoProjectRolesServ
 from ondewo_bpi.autocoded.session_grpc_autocode import AutoSessionsServicer
 from ondewo_bpi.autocoded.user_grpc_autocode import AutoUsersServicer
 from ondewo_bpi.constants import SipTriggers, QueryTriggers
+from ondewo_bpi.helpers import get_session_from_response
 from ondewo_bpi.message_handler import MessageHandler, SingleMessageHandler
 
-from ondewo_bpi.helpers import get_session_from_response
-from collections import OrderedDict
-from dataclasses import dataclass, field
+
+@dataclass()
+class IntentCallbackAssignor:
+    """Class for keeping track of the intents and their handlers"""
+    sort_index: int = field(init=False, repr=False)
+    intent_pattern: str
+    handlers: List[Callable]
+
+    def __gt__(self, other: 'IntentCallbackAssignor') -> bool:
+        return self.sort_index > other.sort_index
+
+    def __lt__(self, other: 'IntentCallbackAssignor') -> bool:
+        return self.sort_index < other.sort_index
+
+    def __post_init__(self):
+        object.__setattr__(self, 'sort_index', len(self.intent_pattern))
 
 
 class BpiSessionsServices(AutoSessionsServicer):
@@ -47,14 +62,13 @@ class BpiSessionsServices(AutoSessionsServicer):
         pass
 
     def __init__(self) -> None:
-
-        self.intent_handlers: List[IntentHandlerDataclass] = list()
+        self.intent_handlers: List[IntentCallbackAssignor] = list()
         self.trigger_handlers: Dict[str, Callable] = {
             i.value: self.trigger_function_not_implemented for i in [*SipTriggers, *QueryTriggers]
         }
 
     def register_intent_handler(self, intent_pattern: str, handlers: List[Callable]) -> None:
-        intent_handler: IntentHandlerDataclass = IntentHandlerDataclass(intent_pattern=intent_pattern,
+        intent_handler: IntentCallbackAssignor = IntentCallbackAssignor(intent_pattern=intent_pattern,
                                                                         handlers=handlers)
         self.intent_handlers.append(intent_handler)
         self.intent_handlers = sorted(self.intent_handlers, reverse=True)
@@ -116,13 +130,13 @@ class BpiSessionsServices(AutoSessionsServicer):
     @Timer(log_arguments=False, recursive=True)
     def process_messages(self,
                          response: session_pb2.DetectIntentResponse, ) -> session_pb2.DetectIntentResponse:
-        new_response = None
         for j, message in enumerate(response.query_result.fulfillment_messages):
             found_triggers = MessageHandler.get_triggers(message, get_session_from_response(response))
 
             for found_trigger in found_triggers:
-                new_response = self.trigger_handlers[found_trigger](response, message, found_trigger,
-                                                                    found_triggers)
+                new_response: Optional[session_pb2.DetectIntentResponse] = \
+                    self.trigger_handlers[found_trigger](response, message, found_trigger, found_triggers)
+
                 if new_response:
                     if not new_response.response_id == response.response_id:
                         return new_response
@@ -163,24 +177,11 @@ class BpiSessionsServices(AutoSessionsServicer):
 
     @functools.lru_cache(maxsize=10)
     def _get_handlers_for_intent(self, intent_name: str,
-                                 sorted_intent_handlers_list: List[IntentHandlerDataclass]) \
-            -> Optional[List[Callable]]:
-        for s in sorted_intent_handlers_list:
-            print(s.intent_pattern, intent_name)
-            if re.match(s.intent_pattern, intent_name):
-                return s.handlers
+                                 assignors: List[IntentCallbackAssignor]) -> Optional[List[Callable]]:
+        for assignor in assignors:
+            if re.match(assignor.intent_pattern, intent_name):
+                return assignor.handlers
         return None
-
-
-@dataclass(order=True)
-class IntentHandlerDataclass:
-    '''Class for keeping track of the intents and their handlers'''
-    sort_index: int = field(init=False, repr=False)
-    intent_pattern: str
-    handlers: List[Callable]
-
-    def __post_init__(self):
-        object.__setattr__(self, 'sort_index', len(self.intent_pattern))
 
 
 class BpiUsersServices(AutoUsersServicer):
