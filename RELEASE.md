@@ -2,6 +2,7 @@
 *****************
 ## Release ONDEWO BPI v3.0.0
 ### Improvements
+* Enable the configuration of the CentralClientProvider to be passed (optionally)
 * Support of patterns to invoke intent callbacks
 
 ### Breaking Changes
