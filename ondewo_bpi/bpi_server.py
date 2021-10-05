@@ -111,8 +111,8 @@ class BpiServer(
         logger_console.warning({"message": f"Server started on port {PORT}", "content": PORT})
         logger_console.warning(
             {
-                "message": f"using intent handlers dict {list(self.intent_handlers.keys())}",
-                "content": list(self.intent_handlers.keys()),
+                "message": f"using intent handlers list: {self.intent_handlers}",
+                "content": self.intent_handlers,
             }
         )
         try:
