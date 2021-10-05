@@ -14,7 +14,7 @@
 
 import time
 from concurrent import futures
-from typing import List
+from typing import List, Optional
 
 import grpc
 from grpc_reflection.v1alpha import reflection
@@ -64,9 +64,12 @@ class BpiServer(
     def client(self, value: NLUClient) -> None:
         self._client = value
 
-    def __init__(self) -> None:
+    def __init__(self, client_provider: Optional[CentralClientProvider]) -> None:
         super().__init__()
-        self.client = CentralClientProvider().get_client()
+        if not client_provider:
+            self.client = CentralClientProvider().get_client()
+        else:
+            self.client = client_provider.get_client()
         self.server = None
         self.services_descriptors: List[str] = [
             agent_pb2.DESCRIPTOR.services_by_name["Agents"].full_name,  # type: ignore
@@ -108,8 +111,8 @@ class BpiServer(
         logger_console.warning({"message": f"Server started on port {PORT}", "content": PORT})
         logger_console.warning(
             {
-                "message": f"using intent handlers dict {list(self.intent_handlers.keys())}",
-                "content": list(self.intent_handlers.keys()),
+                "message": f"using intent handlers list: {self.intent_handlers}",
+                "content": self.intent_handlers,
             }
         )
         try:

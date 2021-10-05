@@ -1,5 +1,29 @@
 # Release History
 *****************
+## Release ONDEWO BPI v3.0.0
+### Improvements
+* Enable the configuration of the CentralClientProvider to be passed (optionally)
+* Support of patterns to invoke intent callbacks
+
+### Breaking Changes
+This version holds small renaming and typing changes on the BPI Server:
+  * `self.intent_handlers` is now a `List[IntentCallbackAssignor]` instead of a dictionary; custom code in the `register_handlers` function will need adaptation. 
+  * The `intent_name` field of the `registered handlers` now supports patterns, therefore its name changed to `intent_pattern`.
+  * The `handler` field of the `registered handlers` now contains a list of callables, therefore was renamed to `handlers`.
+
+Below an example of how it should look after the update:
+
+```python
+    def register_handlers(self) -> None:
+        self.register_intent_handler(
+            intent_pattern=r"i.my_\.*", handlers=[self.reformat_text_in_intent],
+        )
+        self.register_intent_handler(
+            intent_pattern="i.my_handled_intent", handlers=[self.reformat_text_in_intent],
+        )
+```
+
+*****************
 ## Release ONDEWO BPI v2.0.4
 ### New Features
 * Support NLU API 2.0.x
