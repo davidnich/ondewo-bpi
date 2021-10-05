@@ -43,22 +43,27 @@ class MyServer(BpiServer):
 
     def register_handlers(self) -> None:
         self.register_intent_handler(
-            intent_name="Default Fallback Intent", handler=self.handle_default_fallback,
+            intent_pattern="Default Fallback Intent", handlers=[self.handle_default_fallback],
         )
         self.register_intent_handler(
-            intent_name="Default Exit Intent", handler=self.handle_default_exit,
+            intent_pattern="Default Exit Intent", handlers=[self.handle_default_exit],
         )
         self.register_intent_handler(
-            intent_name="i.my_handled_intent", handler=self.reformat_text_in_intent,
+            intent_pattern=r"i.my_\.*", handlers=[self.reformat_text_in_intent],
+        )
+        self.register_intent_handler(
+            intent_pattern="i.my_handled_intent", handlers=[self.reformat_text_in_intent],
         )
 
-    def reformat_text_in_intent(self, response: session_pb2.DetectIntentResponse) -> session_pb2.DetectIntentResponse:
+    def reformat_text_in_intent(self,
+                                response: session_pb2.DetectIntentResponse) -> session_pb2.DetectIntentResponse:
         return MessageHandler.substitute_pattern(
             pattern="<REPLACE:REPLACE_THIS_TEXT>", replace="new text", response=response
         )
 
     @staticmethod
-    def handle_default_fallback(response: session_pb2.DetectIntentResponse) -> session_pb2.DetectIntentResponse:
+    def handle_default_fallback(
+            response: session_pb2.DetectIntentResponse) -> session_pb2.DetectIntentResponse:
         logger_console.warning("Default fallback was triggered!")
         return response
 
