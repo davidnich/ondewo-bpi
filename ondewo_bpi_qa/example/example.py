@@ -24,10 +24,10 @@ class MyQAServer(QAServer):
 
     def register_intent_handlers(self) -> None:
         self.register_intent_handler(
-            intent_name="Default Fallback Intent", handler=self.handle_default_fallback,
+            intent_pattern="Default Fallback Intent", handlers=[self.handle_default_fallback],
         )
         self.register_intent_handler(
-            intent_name="Default Exit Intent", handler=self.handle_default_exit,
+            intent_pattern="Default Exit Intent", handlers=[self.handle_default_exit],
         )
 
     @staticmethod

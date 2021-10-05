@@ -23,5 +23,5 @@ from ondewo_bpi.config import Client
 def test_import() -> None:
     bpi = BpiServer()
     assert isinstance(bpi.client, Client)
-    assert isinstance(bpi.intent_handlers, dict)
+    assert isinstance(bpi.intent_handlers, list)
     assert not bpi.server
