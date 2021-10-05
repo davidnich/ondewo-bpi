@@ -35,6 +35,7 @@ from ondewo_bpi.message_handler import MessageHandler, SingleMessageHandler
 
 from ondewo_bpi.helpers import get_session_from_response
 from collections import OrderedDict
+from dataclasses import dataclass, field
 
 
 class BpiSessionsServices(AutoSessionsServicer):
@@ -47,17 +48,16 @@ class BpiSessionsServices(AutoSessionsServicer):
 
     def __init__(self) -> None:
 
-        self.intent_handlers: Dict[str,List[Callable]] = OrderedDict()
+        self.intent_handlers: List[IntentHandlerDataclass] = list()
         self.trigger_handlers: Dict[str, Callable] = {
             i.value: self.trigger_function_not_implemented for i in [*SipTriggers, *QueryTriggers]
         }
 
-    def register_intent_handler(self, intent_name: str, handlers: List[Callable]) -> None:
-        self.intent_handlers[intent_name] = handlers
-        # Make sure they are ordered by key length on insert
-        self.intent_handlers = self._create_ordered_dict_by_key_value_length(
-            dictionary=self.intent_handlers
-        )
+    def register_intent_handler(self, intent_pattern: str, handlers: List[Callable]) -> None:
+        intent_handler: IntentHandlerDataclass = IntentHandlerDataclass(intent_pattern=intent_pattern,
+                                                                        handlers=handlers)
+        self.intent_handlers.append(intent_handler)
+        self.intent_handlers = sorted(self.intent_handlers, reverse=True)
 
     def register_trigger_handler(self, trigger: str, handler: Callable) -> None:
         self.trigger_handlers[trigger] = handler
@@ -161,15 +161,26 @@ class BpiSessionsServices(AutoSessionsServicer):
             )
         return cai_response
 
-    def _create_ordered_dict_by_key_value_length(self, dictionary: Dict) -> Dict:
-        return OrderedDict(sorted(dictionary.items(), key=lambda x: len(x[0]), reverse=True))
-
-    @functools.lru_cache(maxsize=20)
-    def _get_handlers_for_intent(self, intent_name, sorted_dict: Dict[str,Any]) -> Optional[List[Callable]]:
-        for key in sorted_dict.keys():
-            if re.match(key, intent_name):
-                return sorted_dict.get(key)
+    @functools.lru_cache(maxsize=10)
+    def _get_handlers_for_intent(self, intent_name: str,
+                                 sorted_intent_handlers_list: List[IntentHandlerDataclass]) \
+            -> Optional[List[Callable]]:
+        for s in sorted_intent_handlers_list:
+            print(s.intent_pattern, intent_name)
+            if re.match(s.intent_pattern, intent_name):
+                return s.handlers
         return None
+
+
+@dataclass(order=True)
+class IntentHandlerDataclass:
+    '''Class for keeping track of the intents and their handlers'''
+    sort_index: int = field(init=False, repr=False)
+    intent_pattern: str
+    handlers: List[Callable]
+
+    def __post_init__(self):
+        object.__setattr__(self, 'sort_index', len(self.intent_pattern))
 
 
 class BpiUsersServices(AutoUsersServicer):

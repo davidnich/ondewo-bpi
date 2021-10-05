@@ -43,13 +43,16 @@ class MyServer(BpiServer):
 
     def register_handlers(self) -> None:
         self.register_intent_handler(
-            intent_name="Default Fallback Intent", handlers=[self.handle_default_fallback],
+            intent_pattern="Default Fallback Intent", handlers=[self.handle_default_fallback],
         )
         self.register_intent_handler(
-            intent_name="Default Exit Intent", handlers=[self.handle_default_exit],
+            intent_pattern="Default Exit Intent", handlers=[self.handle_default_exit],
         )
         self.register_intent_handler(
-            intent_name="i.my_handled_intent", handlers=[self.reformat_text_in_intent],
+            intent_pattern="i.my_\.*", handlers=[self.reformat_text_in_intent],
+        )
+        self.register_intent_handler(
+            intent_pattern="i.my_handled_intent", handlers=[self.reformat_text_in_intent],
         )
 
     def reformat_text_in_intent(self,
