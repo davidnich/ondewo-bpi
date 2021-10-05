@@ -148,18 +148,17 @@ class BpiSessionsServices(AutoSessionsServicer):
         # Create an ordered dictionary by key value length
         intent_name = cai_response.query_result.intent.display_name
         handlers: Optional[List[Callable]] = self._get_handlers_for_intent(intent_name, self.intent_handlers)
-        if handlers is not None:
-            for handler in handlers:
-                cai_response = handler(cai_response)
-                text = [i.text.text for i in cai_response.query_result.fulfillment_messages]
-                logger_console.warning(
-                    {
-                        "message": f"BPI-DetectIntentResponse from BPI with text: {text}",
-                        "content": text,
-                        "text": text,
-                        "tags": ["text", "clean"],
-                    }
-                )
+        for handler in handlers:
+            cai_response = handler(cai_response)
+            text = [i.text.text for i in cai_response.query_result.fulfillment_messages]
+            logger_console.info(
+                {
+                    "message": f"BPI-DetectIntentResponse from BPI with text: {text}",
+                    "content": text,
+                    "text": text,
+                    "tags": ["text", "clean"],
+                }
+            )
         return cai_response
 
     def _create_ordered_dict_by_key_value_length(self, dictionary: Dict) -> Dict:
