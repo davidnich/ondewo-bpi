@@ -33,12 +33,12 @@ class MyServer(BpiServer):
     def __init__(self) -> None:
         os.environ["MODULE_NAME"] = "bpi_example_server"  # update module name for logger
         port_in_use = PortChecker.check_client_users_stub(port=CAI_PORT)
-        if not port_in_use:
-            self.mock_login_server = MockUserLoginServer()
-            self.mock_login_server.serve(port=CAI_PORT)  # start mock-login server
-        super().__init__()  # BpiServer.__init__() triggers Client-init and Login() grpc call
-        if not port_in_use:
-            self.mock_login_server.kill_server()  # kill mock-login server
+        #if not port_in_use:
+        #    self.mock_login_server = MockUserLoginServer()
+        #    self.mock_login_server.serve(port=CAI_PORT)  # start mock-login server
+        super().__init__(None)  # BpiServer.__init__() triggers Client-init and Login() grpc call
+        #if not port_in_use:
+        #    self.mock_login_server.kill_server()  # kill mock-login server
         self.register_handlers()
 
     def register_handlers(self) -> None:

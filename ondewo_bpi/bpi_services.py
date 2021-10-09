@@ -162,6 +162,8 @@ class BpiSessionsServices(AutoSessionsServicer):
         # Create an ordered dictionary by key value length
         intent_name = cai_response.query_result.intent.display_name
         handlers: Optional[List[Callable]] = self._get_handlers_for_intent(intent_name, self.intent_handlers)
+        if not handlers:
+            return cai_response
         for handler in handlers:
             cai_response = handler(cai_response)
             text = [i.text.text for i in cai_response.query_result.fulfillment_messages]
@@ -173,9 +175,9 @@ class BpiSessionsServices(AutoSessionsServicer):
                     "tags": ["text", "clean"],
                 }
             )
-        return cai_response
+            return cai_response
 
-    @functools.lru_cache(maxsize=10)
+    #@functools.lru_cache(maxsize=10)
     def _get_handlers_for_intent(self, intent_name: str,
                                  assignors: List[IntentCallbackAssignor]) -> Optional[List[Callable]]:
         for assignor in assignors:
